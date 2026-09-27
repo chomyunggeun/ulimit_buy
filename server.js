@@ -33,9 +33,9 @@ function safeMessage(error) {
 
 function dpapi(mode, text) {
   if (process.platform !== "win32") return Promise.reject(new Error("Windows DPAPI가 필요한 기능입니다."));
-  const script = "$input=[Console]::In.ReadToEnd();$bytes=[Convert]::FromBase64String($input);if($args[0] -eq 'protect'){$out=[Security.Cryptography.ProtectedData]::Protect($bytes,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)}else{$out=[Security.Cryptography.ProtectedData]::Unprotect($bytes,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)};[Console]::Out.Write([Convert]::ToBase64String($out))";
+  const script = "Import-Module Microsoft.PowerShell.Security;$mode=$env:TOSS_V4_DPAPI_MODE;$input=[Console]::In.ReadToEnd();if($mode -eq 'protect'){$plain=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($input));$secure=ConvertTo-SecureString -String $plain -AsPlainText -Force;$out=ConvertFrom-SecureString -SecureString $secure}else{$encrypted=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($input));$secure=ConvertTo-SecureString -String $encrypted;$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure);try{$out=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)}finally{[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)}};[Console]::Out.Write([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($out)))";
   return new Promise((resolve, reject) => {
-    const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script, mode], { windowsHide: true });
+    const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, env: { ...process.env, TOSS_V4_DPAPI_MODE: mode } });
     let output = "", errors = "";
     child.stdout.on("data", chunk => { output += chunk; });
     child.stderr.on("data", chunk => { errors += chunk; });
@@ -45,8 +45,15 @@ function dpapi(mode, text) {
   });
 }
 
-async function encrypt(secret) { return dpapi("protect", secret); }
-async function decrypt(value) { return Buffer.from(await dpapi("unprotect", value), "base64").toString("utf8"); }
+async function encrypt(secret) {
+  try { return { value: `dpapi:${await dpapi("protect", secret)}`, storage: "Windows DPAPI (CurrentUser)" }; }
+  catch { return { value: `local:${Buffer.from(secret, "utf8").toString("base64")}`, storage: "로컬 설정 파일 (암호화 미사용)" }; }
+}
+async function decrypt(value) {
+  if (String(value).startsWith("local:")) return Buffer.from(String(value).slice(6), "base64").toString("utf8");
+  const encrypted = String(value).startsWith("dpapi:") ? String(value).slice(6) : value;
+  return Buffer.from(await dpapi("unprotect", encrypted), "base64").toString("utf8");
+}
 
 async function readConfig() {
   try { return JSON.parse(await fsp.readFile(CONFIG_PATH, "utf8")); }
@@ -66,7 +73,7 @@ function publicConfig(config) {
     clientIdMasked: id ? `${id.slice(0, 5)}…${id.slice(-4)}` : "",
     clientIdConfigured: Boolean(id), secretConfigured: Boolean(config.clientSecretProtected),
     accountSeq: config.accountSeq || "", liveTradingEnabled: Boolean(config.liveTradingEnabled),
-    storage: process.platform === "win32" ? "Windows DPAPI (CurrentUser)" : "local",
+    storage: config.secretStorage || (String(config.clientSecretProtected || "").startsWith("local:") ? "로컬 설정 파일 (암호화 미사용)" : "Windows DPAPI (CurrentUser)"),
   };
 }
 
@@ -155,7 +162,8 @@ async function api(request, response, pathname) {
     if (!clientId) throw new Error("클라이언트 ID를 입력하세요.");
     if (!previous.clientSecretProtected && !secret) throw new Error("처음 저장할 때는 클라이언트 시크릿이 필요합니다.");
     if (input.accountSeq && !/^\d+$/.test(String(input.accountSeq))) throw new Error("계좌 순번은 숫자여야 합니다.");
-    const next = { clientId, clientSecretProtected: secret ? await encrypt(secret) : previous.clientSecretProtected, accountSeq: String(input.accountSeq || "").trim(), liveTradingEnabled: Boolean(input.liveTradingEnabled), updatedAt: new Date().toISOString() };
+    const protectedSecret = secret ? await encrypt(secret) : { value: previous.clientSecretProtected, storage: previous.secretStorage };
+    const next = { clientId, clientSecretProtected: protectedSecret.value, secretStorage: protectedSecret.storage, accountSeq: String(input.accountSeq || "").trim(), liveTradingEnabled: Boolean(input.liveTradingEnabled), updatedAt: new Date().toISOString() };
     await writeConfig(next); tokenCache = null;
     return json(response, 200, { ok: true, settings: publicConfig(next) });
   }

@@ -29,7 +29,7 @@ node server.js
 4. **연결 테스트**를 눌러 토큰 발급, 계좌 목록, TQQQ 시세 조회를 확인합니다. 이 단계에서는 주문을 보내지 않습니다.
 5. 여러 계좌가 있다면 테스트 결과의 `accountSeq`를 입력한 뒤 다시 저장합니다.
 
-Windows에서 클라이언트 시크릿은 `%LOCALAPPDATA%\TossV4Trader\settings.json`에 Windows DPAPI(CurrentUser)로 암호화되어 저장됩니다. 이 파일은 저장소 바깥에 있으며 GitHub에 올라가지 않습니다. 액세스 토큰은 메모리에만 보관하고 디스크에 저장하지 않습니다.
+클라이언트 시크릿은 `%LOCALAPPDATA%\TossV4Trader\settings.json`에 저장되며 이 파일은 저장소 바깥에 있어 GitHub에 올라가지 않습니다. Windows DPAPI(CurrentUser)를 사용할 수 있는 환경에서는 암호화해 저장합니다. 현재 실행 환경에서 DPAPI를 사용할 수 없으면 앱이 화면에 **암호화 미사용**으로 표시하며, 이 경우 파일 접근 권한이 있는 로컬 사용자에게 시크릿이 노출될 수 있으므로 전용 PC에서만 사용하세요. 액세스 토큰은 메모리에만 보관하고 디스크에 저장하지 않습니다.
 
 ### 실주문 안전장치
 - 실주문 전송은 기본값이 꺼져 있습니다.

@@ -51,7 +51,7 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}.field{m
 
 <section class="card settings hidden" id="settingsPanel">
   <div class="row between"><h3>토스증권 API 연결</h3><button onclick="toggleSettings()">닫기</button></div>
-  <div class="warn">클라이언트 시크릿은 이 브라우저나 GitHub에 저장되지 않습니다. 저장 시 이 PC의 <b>Windows DPAPI</b>로 암호화되며, 현재 Windows 사용자만 복호화할 수 있습니다.</div>
+  <div class="warn">클라이언트 시크릿은 이 브라우저나 GitHub에 저장되지 않습니다. 이 PC의 로컬 설정 파일에만 저장되며, Windows DPAPI를 사용할 수 있으면 현재 사용자 계정으로 암호화합니다. 저장 결과의 보안 상태는 아래에 표시됩니다.</div>
   <div class="settings-grid" style="margin-top:14px">
     <div class="field"><label>클라이언트 ID</label><input id="clientId" autocomplete="off" placeholder="c_…"></div>
     <div class="field"><label>클라이언트 시크릿</label><input id="clientSecret" type="password" autocomplete="new-password" placeholder="처음 저장 또는 교체 시 입력"></div>
