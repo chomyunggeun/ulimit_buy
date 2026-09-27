@@ -168,6 +168,17 @@ async function readBody(request) {
 }
 
 async function api(request, response, pathname) {
+  if (request.method === "GET" && pathname === "/api/account-overview") {
+    const config = await readConfig();
+    if (!config.accountSeq) throw new Error("API 연결 설정에서 계좌 순번을 입력한 뒤 로컬에 저장하세요.");
+    await accessToken(config);
+    const paths = ["/api/v1/holdings", "/api/v1/buying-power?currency=KRW", "/api/v1/buying-power?currency=USD"];
+    const results = await Promise.allSettled(paths.map(p => tossApi(config, "GET", p, { account: true })));
+    const labels = ["보유 주식", "원화 매수 가능 금액", "달러 매수 가능 금액"];
+    const value = i => results[i].status === "fulfilled" ? results[i].value.data?.result ?? null : null;
+    const errors = results.flatMap((r, i) => r.status === "rejected" ? [`${labels[i]}: ${safeMessage(r.reason)}`] : value(i) == null ? [`${labels[i]}: 응답 데이터가 없습니다.`] : []);
+    return json(response, 200, { accountSeq: config.accountSeq, fetchedAt: new Date().toISOString(), holdings: value(0), buyingPower: { KRW: value(1), USD: value(2) }, errors });
+  }
   if (request.method === "GET" && pathname === "/api/health") return json(response, 200, { ok: true, mode: "LOCAL", liveOrderEndpoint: true });
   if (request.method === "GET" && pathname === "/api/settings") return json(response, 200, publicConfig(await readConfig()));
   if (request.method === "POST" && pathname === "/api/settings") {
