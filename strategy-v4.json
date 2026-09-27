@@ -1,0 +1,26 @@
+{
+  "name": "Infinite Buying V4",
+  "default": {
+    "symbol": "TQQQ",
+    "split": 40
+  },
+  "normal": {
+    "star_pct": {
+      "TQQQ_40": "15 - 0.75*T",
+      "TQQQ_20": "15 - 1.5*T",
+      "SOXL_40": "20 - T",
+      "SOXL_20": "20 - 2*T"
+    },
+    "unit_buy": "cash / (N - T); first buy = capital / N",
+    "front": "half at star-0.01 LOC + half at avg LOC",
+    "back": "full unit buy at star-0.01 LOC",
+    "sell": "quarter at star LOC + remainder at avg*(1+target)"
+  },
+  "reverse": {
+    "enter": "T >= N-1",
+    "first_day_sell": "MOC floor(qty/(N/2))",
+    "later_sell": "LOC floor(qty/(N/2)) at 5-day close average",
+    "later_buy": "LOC cash/4 at 5-day average - 0.01",
+    "exit": "close > avg*0.85 TQQQ or avg*0.80 SOXL"
+  }
+}

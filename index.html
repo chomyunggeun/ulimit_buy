@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Toss V4 Trader</title>
+<style>
+:root{
+  --bg:#07111f; --panel:#0d1b2a; --panel2:#101f31; --line:#20344c; --text:#edf4ff;
+  --muted:#8ea2bc; --accent:#3182f6; --green:#35c48d; --red:#ff6b6b; --amber:#ffc857;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(140deg,#07111f,#0a1626 55%,#0c1b2d);color:var(--text);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+.wrap{max-width:1320px;margin:0 auto;padding:24px}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;border-radius:13px;background:#fff;color:#111;
+display:grid;place-items:center;font-weight:900}.title{font-size:20px;font-weight:800}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+.badge{padding:7px 10px;border:1px solid var(--line);background:#0a1828;border-radius:999px;font-size:12px;color:#b8c9dd}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.card{background:rgba(13,27,42,.92);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 14px 40px rgba(0,0,0,.18)}
+.card h3{margin:0 0 14px;font-size:15px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--panel2);border:1px solid #1b3148;border-radius:14px;padding:14px}.stat .k{font-size:11px;color:var(--muted)}
+.stat .v{font-size:21px;font-weight:800;margin-top:5px}.green{color:var(--green)}.red{color:var(--red)}.amber{color:var(--amber)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}
+button{border:0;border-radius:11px;padding:10px 14px;font-weight:700;cursor:pointer;background:#1a2b41;color:#dfeaff}
+button.primary{background:var(--accent);color:white}button.danger{background:#3c1d28;color:#ff9e9e}button.good{background:#12372d;color:#72e4b7}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select{background:#091726;border:1px solid #29415c;color:white;border-radius:10px;padding:10px 11px;outline:none}
+label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}.field{min-width:128px}.field input,.field select{width:100%}
+.progress{height:9px;border-radius:99px;background:#162a40;overflow:hidden;margin-top:10px}.progress>div{height:100%;background:linear-gradient(90deg,#3182f6,#53a2ff)}
+.order{display:grid;grid-template-columns:84px 1fr 110px 84px;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #1b3046}
+.order:last-child{border-bottom:0}.type{font-size:11px;border-radius:8px;padding:6px 8px;text-align:center;background:#17293d}
+.buy{color:#74d6ff}.sell{color:#ff9696}.price{font-weight:800}.desc{font-size:12px;color:var(--muted);margin-top:3px}
+.small{font-size:12px;color:var(--muted)}.modebox{background:#0a1828;border:1px solid #274360;padding:14px;border-radius:14px}
+.switch{width:48px;height:27px;border-radius:30px;background:#34465b;padding:3px;cursor:pointer}.switch i{display:block;width:21px;height:21px;border-radius:50%;background:white;transition:.2s}
+.switch.on{background:var(--green)}.switch.on i{transform:translateX(21px)}
+.log{height:205px;overflow:auto;background:#07131f;border:1px solid #1b3046;border-radius:12px;padding:10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#a8bbd0}
+.log div{padding:4px 0}.warn{padding:12px 14px;border-radius:12px;background:#281f0d;border:1px solid #5f491a;color:#ffd986;font-size:12px;line-height:1.55}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:900px){.grid,.two{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.order{grid-template-columns:72px 1fr 80px}.order .action{display:none}}
+@media(max-width:520px){.wrap{padding:14px}.stats{grid-template-columns:1fr 1fr}.stat .v{font-size:17px}.row.fields{display:grid;grid-template-columns:1fr 1fr}.field{min-width:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand"><div class="logo">V4</div><div><div class="title">Toss V4 Trader</div><div class="sub">무한매수법 V4 · TQQQ 40분할 · 토스증권 API 연결 구조</div></div></div>
+  <div class="badge" id="connBadge">● MOCK MODE</div>
+</header>
+
+<div class="grid">
+<section class="card">
+ <div class="row between">
+   <h3>전략 상태</h3>
+   <div class="row"><span class="small">자동매매</span><div id="autoSwitch" class="switch" onclick="toggleAuto()"><i></i></div></div>
+ </div>
+ <div class="stats">
+   <div class="stat"><div class="k">현재 모드</div><div class="v" id="modeV">NORMAL</div></div>
+   <div class="stat"><div class="k">T 진행값</div><div class="v" id="tV">7.50 T</div></div>
+   <div class="stat"><div class="k">평단가</div><div class="v" id="avgV">$72.40</div></div>
+   <div class="stat"><div class="k">잔금</div><div class="v green" id="cashV">$14,820</div></div>
+ </div>
+
+ <div class="modebox">
+  <div class="row between"><b id="phaseText">전반전</b><span class="small" id="progressText">7.50 / 40T</span></div>
+  <div class="progress"><div id="prog" style="width:18.75%"></div></div>
+  <div class="row fields" style="margin-top:14px">
+   <div class="field"><label>종목</label><select id="symbol"><option>TQQQ</option><option>SOXL</option></select></div>
+   <div class="field"><label>분할수</label><select id="split"><option>40</option><option>20</option></select></div>
+   <div class="field"><label>운용 원금($)</label><input id="capital" type="number" value="20000"></div>
+   <div class="field"><label>T</label><input id="turn" type="number" step="0.01" value="7.5"></div>
+   <div class="field"><label>평단($)</label><input id="avg" type="number" step="0.01" value="72.4"></div>
+   <div class="field"><label>보유수량</label><input id="qty" type="number" value="83"></div>
+   <div class="field"><label>잔금($)</label><input id="cash" type="number" step="0.01" value="14820"></div>
+   <div class="field"><label>최근 종가($)</label><input id="close" type="number" step="0.01" value="68.15"></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+   <button class="primary" onclick="recalc()">오늘 주문 계산</button>
+   <button onclick="simulateClose()">모의 종가 체결</button>
+   <button class="danger" onclick="emergency()">긴급 전체중지</button>
+  </div>
+ </div>
+</section>
+
+<section class="card">
+ <h3>오늘의 주문</h3>
+ <div id="orders"></div>
+ <div class="warn" style="margin-top:14px">
+   LIVE 주문은 기본적으로 잠겨 있습니다. 토큰은 브라우저에 저장하지 않고 백엔드 환경변수로만 사용하도록 설계했습니다.
+ </div>
+</section>
+</div>
+
+<div class="two">
+<section class="card">
+ <div class="row between"><h3>V4 계산값</h3><span class="small">매일 재계산</span></div>
+ <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat"><div class="k">별 %</div><div class="v" id="starPct">9.38%</div></div>
+  <div class="stat"><div class="k">별지점</div><div class="v" id="starPrice">$79.19</div></div>
+  <div class="stat"><div class="k">1회 매수금</div><div class="v" id="unitBuy">$455.99</div></div>
+ </div>
+ <div class="small" id="formulaText"></div>
+</section>
+
+<section class="card">
+ <div class="row between"><h3>엔진 로그</h3><button onclick="clearLog()">지우기</button></div>
+ <div class="log" id="log"></div>
+</section>
+</div>
+</div>
+
+<script>
+const fmt=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
+const money=n=>'$'+fmt(n);
+let auto=false, halted=false, reverseDay=0;
+function log(msg){const el=document.getElementById('log'); const t=new Date().toLocaleTimeString('ko-KR'); el.innerHTML += `<div>[${t}] ${msg}</div>`; el.scrollTop=el.scrollHeight;}
+function clearLog(){document.getElementById('log').innerHTML='';}
+function toggleAuto(){if(halted){log('긴급중지 상태입니다. 상태를 다시 계산한 뒤 수동으로 해제하세요.'); return;} auto=!auto; document.getElementById('autoSwitch').classList.toggle('on',auto); log(`자동매매 ${auto?'ON':'OFF'}`);}
+function emergency(){auto=false; halted=true; document.getElementById('autoSwitch').classList.remove('on'); log('EMERGENCY STOP: 자동 주문 전송 차단'); alert('긴급중지되었습니다. 실제 주문 연결 시 서버 측 주문 전송도 차단하도록 설계되어 있습니다.');}
+function field(id){return Number(document.getElementById(id).value)}
+function starPct(sym,N,T){ if(sym==='TQQQ') return N===40?15-.75*T:15-1.5*T; return N===40?20-T:20-2*T; }
+function targetPct(sym){return sym==='TQQQ'?0.15:0.20}
+function orderRow(type,title,desc,price,qty,cls=''){
+ return `<div class="order"><div class="type ${cls}">${type}</div><div><div class="price">${title}</div><div class="desc">${desc}</div></div><div><b>${price}</b><div class="desc">${qty}</div></div><button class="action" onclick="log('모의 주문 확인: ${type} ${String(title).replaceAll("'","")}')">확인</button></div>`;
+}
+function recalc(){
+ halted=false;
+ const sym=document.getElementById('symbol').value, N=field('split'), T=field('turn'), avg=field('avg'), qty=Math.floor(field('qty')), cash=field('cash'), capital=field('capital'), close=field('close');
+ const isReverse=T>=N-1;
+ const pct=starPct(sym,N,T);
+ const star=avg*(1+pct/100);
+ const unit=T<=0 ? capital/N : (N-T>0?cash/(N-T):0);
+ const phase=isReverse?'REVERSE':(T<=0?'첫 매수':T<N/2?'전반전':'후반전');
+ document.getElementById('modeV').textContent=isReverse?'REVERSE':'NORMAL';
+ document.getElementById('modeV').className='v '+(isReverse?'amber':'');
+ document.getElementById('tV').textContent=T.toFixed(3)+' T';
+ document.getElementById('avgV').textContent=money(avg);
+ document.getElementById('cashV').textContent=money(cash);
+ document.getElementById('phaseText').textContent=phase;
+ document.getElementById('progressText').textContent=`${T.toFixed(2)} / ${N}T`;
+ document.getElementById('prog').style.width=Math.max(0,Math.min(100,T/N*100))+'%';
+ document.getElementById('starPct').textContent=pct.toFixed(2)+'%';
+ document.getElementById('starPrice').textContent=money(star);
+ document.getElementById('unitBuy').textContent=money(unit);
+ let html='';
+ if(!isReverse){
+   if(T<=0 || qty===0){
+     const big=close*1.10, buyQty=Math.max(1,Math.floor(unit/big));
+     html+=orderRow('LOC 매수','첫 매수 · 큰수','최근 종가 +10% 기준 (조정 가능)',money(big),buyQty+'주','buy');
+   } else if(T < N/2){
+     const half=unit/2, starBuy=Math.max(1,Math.floor(half/Math.max(star-.01,.01))), avgBuy=Math.max(1,Math.floor(half/avg));
+     html+=orderRow('LOC 매수','별지점 매수','1회 매수금의 1/2',money(Math.max(star-.01,.01)),starBuy+'주','buy');
+     html+=orderRow('LOC 매수','평단 매수','1회 매수금의 1/2',money(avg),avgBuy+'주','buy');
+   } else {
+     const bq=Math.max(1,Math.floor(unit/Math.max(star-.01,.01)));
+     html+=orderRow('LOC 매수','별지점 전액 매수','후반전 1회 매수금 전액',money(Math.max(star-.01,.01)),bq+'주','buy');
+   }
+   if(qty>0){
+     const qsell=Math.floor(qty/4), rest=qty-qsell, tgt=avg*(1+targetPct(sym));
+     if(qsell>0) html+=orderRow('LOC 매도','쿼터 매도','보유수량 1/4',money(star),qsell+'주','sell');
+     if(rest>0) html+=orderRow('지정가 매도',`${sym==='TQQQ'?'+15%':'+20%'} 목표 매도`,'나머지 보유수량',money(tgt),rest+'주','sell');
+   }
+   document.getElementById('formulaText').textContent=`NORMAL · 별지점 = 평단 × (1 + 별%); 1회매수금 = 잔금 ÷ (${N} − T)`;
+ }else{
+   const divisor=N/2, sellQty=Math.floor(qty/divisor);
+   const recovery=avg*(1-targetPct(sym));
+   // 5일평균은 백엔드 연결 전 데모에서 최근 종가를 대체값으로 표시
+   const sma5=close;
+   if(reverseDay===0){
+     if(sellQty>0) html+=orderRow('MOC 매도','리버스 첫날 강제 매도',`보유수량 ÷ ${divisor}`, '종가',sellQty+'주','sell');
+   }else{
+     if(sellQty>0) html+=orderRow('LOC 매도','리버스 무한매도','5일 종가평균 이상',money(sma5),sellQty+'주','sell');
+     const qcash=cash/4, buyQty=Math.floor(qcash/Math.max(sma5-.01,.01));
+     if(buyQty>0) html+=orderRow('LOC 매수','리버스 쿼터매수','잔금의 1/4',money(Math.max(sma5-.01,.01)),buyQty+'주','buy');
+   }
+   html+=orderRow('복귀 조건','NORMAL 복귀선',`종가가 이 가격 초과 시 복귀`,money(recovery),'체결 주문 아님','');
+   document.getElementById('formulaText').textContent=`REVERSE · 별지점은 실제 연결 시 직전 5거래일 종가 평균 사용 · 회복선 ${money(recovery)}`;
+ }
+ document.getElementById('orders').innerHTML=html || '<div class="small">생성된 주문이 없습니다.</div>';
+ log(`${sym} ${phase} 주문표 계산 완료 · T=${T.toFixed(3)} · 잔금=${money(cash)}`);
+}
+function simulateClose(){
+ const N=field('split'), T=field('turn'), close=field('close'), avg=field('avg'), sym=document.getElementById('symbol').value;
+ if(T>=N-1){
+   reverseDay++;
+   const threshold=avg*(1-targetPct(sym));
+   if(close>threshold){ document.getElementById('turn').value=Math.min(T,N-1.01).toFixed(4); log(`종가 ${money(close)}가 회복선 ${money(threshold)} 초과 → NORMAL 복귀 조건 충족`);}
+   else log(`REVERSE ${reverseDay}일차 모의 체결 처리`);
+ } else {
+   document.getElementById('turn').value=(T+0.5).toFixed(4);
+   log('모의 LOC 절반 매수 체결 → T +0.5');
+ }
+ recalc();
+}
+recalc();
+log('대시보드 시작 · MOCK MODE');
+</script>
+</body></html>
