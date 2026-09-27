@@ -3,4 +3,5 @@
 .env.*
 *.local
 settings.json
+.local/
 __pycache__/

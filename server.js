@@ -14,8 +14,9 @@ const { spawn } = require("child_process");
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT || 8000);
 const ROOT = __dirname;
-const CONFIG_DIR = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), ".local", "share"), "TossV4Trader");
-const CONFIG_PATH = path.join(CONFIG_DIR, "settings.json");
+const APP_CONFIG_DIR = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), ".local", "share"), "TossV4Trader");
+const WORKSPACE_CONFIG_DIR = path.join(ROOT, ".local");
+let configPath = path.join(APP_CONFIG_DIR, "settings.json");
 const API_BASE = "https://openapi.tossinvest.com";
 let tokenCache = null;
 
@@ -56,15 +57,27 @@ async function decrypt(value) {
 }
 
 async function readConfig() {
-  try { return JSON.parse(await fsp.readFile(CONFIG_PATH, "utf8")); }
-  catch (error) { if (error.code === "ENOENT") return {}; throw error; }
+  const candidates = [configPath, path.join(WORKSPACE_CONFIG_DIR, "settings.json")];
+  for (const candidate of [...new Set(candidates)]) {
+    try { const config = JSON.parse(await fsp.readFile(candidate, "utf8")); configPath = candidate; return config; }
+    catch (error) { if (error.code !== "ENOENT") throw error; }
+  }
+  return {};
 }
 
 async function writeConfig(config) {
-  await fsp.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  const temporary = `${CONFIG_PATH}.${process.pid}.tmp`;
-  await fsp.writeFile(temporary, JSON.stringify(config, null, 2), { encoding: "utf8", mode: 0o600 });
-  await fsp.rename(temporary, CONFIG_PATH);
+  const write = async target => {
+    await fsp.mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
+    const temporary = `${target}.${process.pid}.tmp`;
+    await fsp.writeFile(temporary, JSON.stringify(config, null, 2), { encoding: "utf8", mode: 0o600 });
+    await fsp.rename(temporary, target);
+    configPath = target;
+  };
+  try { await write(configPath); }
+  catch (error) {
+    if (!["EACCES", "EPERM"].includes(error.code) || configPath === path.join(WORKSPACE_CONFIG_DIR, "settings.json")) throw error;
+    await write(path.join(WORKSPACE_CONFIG_DIR, "settings.json"));
+  }
 }
 
 function publicConfig(config) {
