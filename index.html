@@ -17,6 +17,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:16px;ma
 .brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;border-radius:13px;background:#fff;color:#111;
 display:grid;place-items:center;font-weight:900}.title{font-size:20px;font-weight:800}.sub{font-size:12px;color:var(--muted);margin-top:3px}
 .badge{padding:7px 10px;border:1px solid var(--line);background:#0a1828;border-radius:999px;font-size:12px;color:#b8c9dd}
+.header-actions{display:flex;align-items:center;gap:8px}.hidden{display:none!important}.settings{margin-bottom:16px}.settings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.status{font-size:12px;color:var(--muted);min-height:18px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:grid;place-items:center;padding:18px;z-index:5}.modal-card{width:min(520px,100%);background:#0d1b2a;border:1px solid #315274;border-radius:18px;padding:20px;box-shadow:0 20px 60px #000}.modal-card h3{margin-top:0}.check{display:flex;gap:8px;align-items:center;font-size:12px;color:#c4d2e3}.check input{width:auto}.order .live{font-size:11px;padding:8px 9px}.danger-note{color:#ffb1b1;background:#301a25;border:1px solid #6b2d41}
 .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.card{background:rgba(13,27,42,.92);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 14px 40px rgba(0,0,0,.18)}
 .card h3{margin:0 0 14px;font-size:15px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .stat{background:var(--panel2);border:1px solid #1b3148;border-radius:14px;padding:14px}.stat .k{font-size:11px;color:var(--muted)}
@@ -37,7 +38,7 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}.field{m
 .log{height:205px;overflow:auto;background:#07131f;border:1px solid #1b3046;border-radius:12px;padding:10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#a8bbd0}
 .log div{padding:4px 0}.warn{padding:12px 14px;border-radius:12px;background:#281f0d;border:1px solid #5f491a;color:#ffd986;font-size:12px;line-height:1.55}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
-@media(max-width:900px){.grid,.two{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.order{grid-template-columns:72px 1fr 80px}.order .action{display:none}}
+@media(max-width:900px){.grid,.two,.settings-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.order{grid-template-columns:72px 1fr 80px}.order .action{display:block;grid-column:2 / -1;width:100%}}
 @media(max-width:520px){.wrap{padding:14px}.stats{grid-template-columns:1fr 1fr}.stat .v{font-size:17px}.row.fields{display:grid;grid-template-columns:1fr 1fr}.field{min-width:0}}
 </style>
 </head>
@@ -45,8 +46,21 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}.field{m
 <div class="wrap">
 <header>
   <div class="brand"><div class="logo">V4</div><div><div class="title">Toss V4 Trader</div><div class="sub">무한매수법 V4 · TQQQ 40분할 · 토스증권 API 연결 구조</div></div></div>
-  <div class="badge" id="connBadge">● MOCK MODE</div>
+  <div class="header-actions"><button onclick="toggleSettings()">API 연결 설정</button><div class="badge" id="connBadge">● 연결 안 됨</div></div>
 </header>
+
+<section class="card settings hidden" id="settingsPanel">
+  <div class="row between"><h3>토스증권 API 연결</h3><button onclick="toggleSettings()">닫기</button></div>
+  <div class="warn">클라이언트 시크릿은 이 브라우저나 GitHub에 저장되지 않습니다. 저장 시 이 PC의 <b>Windows DPAPI</b>로 암호화되며, 현재 Windows 사용자만 복호화할 수 있습니다.</div>
+  <div class="settings-grid" style="margin-top:14px">
+    <div class="field"><label>클라이언트 ID</label><input id="clientId" autocomplete="off" placeholder="c_…"></div>
+    <div class="field"><label>클라이언트 시크릿</label><input id="clientSecret" type="password" autocomplete="new-password" placeholder="처음 저장 또는 교체 시 입력"></div>
+    <div class="field"><label>계좌 순번 (accountSeq)</label><input id="accountSeq" inputmode="numeric" placeholder="연결 테스트 후 선택"></div>
+  </div>
+  <div class="row" style="margin-top:12px"><label class="check"><input id="liveEnabled" type="checkbox"> 실주문 전송을 허용합니다 (주문마다 별도 확인 필요)</label></div>
+  <div class="row" style="margin-top:14px"><button class="primary" onclick="saveSettings()">로컬에 저장</button><button class="good" onclick="testConnection()">연결 테스트</button><span class="status" id="connectionStatus"></span></div>
+  <div class="small" style="margin-top:12px">시작 전 토스증권 WTS의 설정 → Open API에서 키를 발급하고, 이 PC의 공인 IP를 허용 IP 목록에 등록해야 합니다. 연결 테스트는 토큰 발급, 계좌 목록 및 TQQQ 현재가 조회만 하며 주문을 보내지 않습니다.</div>
+</section>
 
 <div class="grid">
 <section class="card">
@@ -86,7 +100,7 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}.field{m
  <h3>오늘의 주문</h3>
  <div id="orders"></div>
  <div class="warn" style="margin-top:14px">
-   LIVE 주문은 기본적으로 잠겨 있습니다. 토큰은 브라우저에 저장하지 않고 백엔드 환경변수로만 사용하도록 설계했습니다.
+   주문표는 기본적으로 미리보기입니다. API 설정에서 실주문을 허용한 뒤에도 각 주문별로 주문 정보와 <b>LIVE ORDER</b> 확인 문구를 직접 입력해야 전송됩니다. 자동매매 스위치는 아직 주문을 자동 전송하지 않습니다.
  </div>
 </section>
 </div>
@@ -109,10 +123,30 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}.field{m
 </div>
 </div>
 
+<div class="modal hidden" id="liveModal" role="dialog" aria-modal="true">
+ <div class="modal-card">
+  <div class="row between"><h3>실주문 전송 확인</h3><button onclick="closeLiveOrder()">닫기</button></div>
+  <div class="warn danger-note">이 작업은 실제 토스증권 계좌에 주문을 전송합니다. 가격·수량·주문 조건을 확인하세요. 전송 후에는 토스증권 주문내역에서 상태를 반드시 확인해야 합니다.</div>
+  <div id="liveSummary" class="modebox" style="margin-top:12px"></div>
+  <div class="field" style="margin-top:12px"><label>확인 문구 입력</label><input id="livePhrase" autocomplete="off" placeholder="LIVE ORDER"></div>
+  <div class="row" style="margin-top:14px"><button class="danger" onclick="sendLiveOrder()">실제 주문 전송</button><span class="status" id="liveStatus"></span></div>
+ </div>
+</div>
+
 <script>
 const fmt=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const money=n=>'$'+fmt(n);
 let auto=false, halted=false, reverseDay=0;
+let pendingLiveOrder=null;
+async function api(path, options={}){const response=await fetch(path,{headers:{'Content-Type':'application/json'},...options});const data=await response.json();if(!response.ok)throw new Error(data.error||'요청에 실패했습니다.');return data;}
+function toggleSettings(){document.getElementById('settingsPanel').classList.toggle('hidden');}
+function setConnectionStatus(message, ok=false){const el=document.getElementById('connectionStatus');el.textContent=message;el.className='status '+(ok?'green':'');}
+async function loadSettings(){try{const data=await api('/api/settings');document.getElementById('accountSeq').value=data.accountSeq||'';document.getElementById('liveEnabled').checked=!!data.liveTradingEnabled;const badge=document.getElementById('connBadge');if(data.secretConfigured){badge.textContent=data.liveTradingEnabled?'● 실주문 허용':'● API 설정됨';badge.className='badge '+(data.liveTradingEnabled?'amber':'green');document.getElementById('clientId').placeholder=data.clientIdMasked||'저장됨';}else{badge.textContent='● 연결 안 됨';badge.className='badge';}}catch(error){document.getElementById('connBadge').textContent='● 로컬 서버 필요';}}
+async function saveSettings(){try{setConnectionStatus('암호화하여 로컬에 저장 중…');const data=await api('/api/settings',{method:'POST',body:JSON.stringify({clientId:document.getElementById('clientId').value,clientSecret:document.getElementById('clientSecret').value,accountSeq:document.getElementById('accountSeq').value,liveTradingEnabled:document.getElementById('liveEnabled').checked})});document.getElementById('clientSecret').value='';setConnectionStatus(`저장 완료 · ${data.settings.storage}`,true);await loadSettings();log('API 연결 정보가 이 PC의 암호화 저장소에 저장됨');}catch(error){setConnectionStatus(error.message);}}
+async function testConnection(){try{setConnectionStatus('토큰·계좌·시세 연결 테스트 중…');const data=await api('/api/test-connection',{method:'POST',body:'{}'});const accounts=data.accounts||[];if(accounts.length===1&&!document.getElementById('accountSeq').value){document.getElementById('accountSeq').value=accounts[0].accountSeq;setConnectionStatus(`연결 성공 · 계좌 순번 ${accounts[0].accountSeq} 선택됨 · ${data.price?.symbol||'TQQQ'} ${data.price?.lastPrice||''}`,true);}else{setConnectionStatus(`연결 성공 · 계좌 ${accounts.map(a=>a.accountSeq).join(', ')||'없음'} · ${data.price?.symbol||'TQQQ'} ${data.price?.lastPrice||''}`,true);}log('토스증권 API 연결 테스트 성공 (주문 전송 없음)');}catch(error){setConnectionStatus(error.message);log(`API 연결 테스트 실패: ${error.message}`);}}
+function prepareLiveOrder(button){try{pendingLiveOrder=JSON.parse(decodeURIComponent(button.dataset.order));const o=pendingLiveOrder;document.getElementById('liveSummary').innerHTML=`<b>${o.symbol} ${o.side==='BUY'?'매수':'매도'} · ${o.orderType}${o.timeInForce==='CLS'?' / LOC':''}</b><div class="desc">수량 ${o.quantity}주 · ${o.orderType==='LIMIT'?'가격 $'+o.price:'시장가'} · 유효조건 ${o.timeInForce}</div>`;document.getElementById('livePhrase').value='';document.getElementById('liveStatus').textContent='';document.getElementById('liveModal').classList.remove('hidden');}catch(error){log('실주문 정보를 준비하지 못했습니다.');}}
+function closeLiveOrder(){pendingLiveOrder=null;document.getElementById('liveModal').classList.add('hidden');}
+async function sendLiveOrder(){if(!pendingLiveOrder)return;const status=document.getElementById('liveStatus');try{status.textContent='실제 주문 전송 중…';const data=await api('/api/live-order',{method:'POST',body:JSON.stringify({...pendingLiveOrder,confirmation:document.getElementById('livePhrase').value})});status.textContent=`접수 완료 · 주문 ID ${data.order?.orderId||'확인 필요'}`;log(`실주문 접수 완료: ${data.order?.orderId||'주문 ID 확인 필요'}`);}catch(error){status.textContent=error.message;log(`실주문 전송 실패: ${error.message}`);}}
 function log(msg){const el=document.getElementById('log'); const t=new Date().toLocaleTimeString('ko-KR'); el.innerHTML += `<div>[${t}] ${msg}</div>`; el.scrollTop=el.scrollHeight;}
 function clearLog(){document.getElementById('log').innerHTML='';}
 function toggleAuto(){if(halted){log('긴급중지 상태입니다. 상태를 다시 계산한 뒤 수동으로 해제하세요.'); return;} auto=!auto; document.getElementById('autoSwitch').classList.toggle('on',auto); log(`자동매매 ${auto?'ON':'OFF'}`);}
@@ -120,8 +154,9 @@ function emergency(){auto=false; halted=true; document.getElementById('autoSwitc
 function field(id){return Number(document.getElementById(id).value)}
 function starPct(sym,N,T){ if(sym==='TQQQ') return N===40?15-.75*T:15-1.5*T; return N===40?20-T:20-2*T; }
 function targetPct(sym){return sym==='TQQQ'?0.15:0.20}
-function orderRow(type,title,desc,price,qty,cls=''){
- return `<div class="order"><div class="type ${cls}">${type}</div><div><div class="price">${title}</div><div class="desc">${desc}</div></div><div><b>${price}</b><div class="desc">${qty}</div></div><button class="action" onclick="log('모의 주문 확인: ${type} ${String(title).replaceAll("'","")}')">확인</button></div>`;
+function orderRow(type,title,desc,price,qty,cls='',liveOrder=null){
+ const live=liveOrder?`<button class="action live" data-order="${encodeURIComponent(JSON.stringify(liveOrder))}" onclick="prepareLiveOrder(this)">실주문</button>`:`<button class="action" onclick="log('모의 주문 확인: ${type}')">확인</button>`;
+ return `<div class="order"><div class="type ${cls}">${type}</div><div><div class="price">${title}</div><div class="desc">${desc}</div></div><div><b>${price}</b><div class="desc">${qty}</div></div>${live}</div>`;
 }
 function recalc(){
  halted=false;
@@ -146,19 +181,21 @@ function recalc(){
  if(!isReverse){
    if(T<=0 || qty===0){
      const big=close*1.10, buyQty=Math.max(1,Math.floor(unit/big));
-     html+=orderRow('LOC 매수','첫 매수 · 큰수','최근 종가 +10% 기준 (조정 가능)',money(big),buyQty+'주','buy');
+     html+=orderRow('LOC 매수','첫 매수 · 큰수','최근 종가 +10% 기준 (조정 가능)',money(big),buyQty+'주','buy',{symbol:sym,side:'BUY',orderType:'LIMIT',timeInForce:'CLS',quantity:String(buyQty),price:big.toFixed(2)});
    } else if(T < N/2){
      const half=unit/2, starBuy=Math.max(1,Math.floor(half/Math.max(star-.01,.01))), avgBuy=Math.max(1,Math.floor(half/avg));
-     html+=orderRow('LOC 매수','별지점 매수','1회 매수금의 1/2',money(Math.max(star-.01,.01)),starBuy+'주','buy');
-     html+=orderRow('LOC 매수','평단 매수','1회 매수금의 1/2',money(avg),avgBuy+'주','buy');
+     const starLoc=Math.max(star-.01,.01);
+     html+=orderRow('LOC 매수','별지점 매수','1회 매수금의 1/2',money(starLoc),starBuy+'주','buy',{symbol:sym,side:'BUY',orderType:'LIMIT',timeInForce:'CLS',quantity:String(starBuy),price:starLoc.toFixed(2)});
+     html+=orderRow('LOC 매수','평단 매수','1회 매수금의 1/2',money(avg),avgBuy+'주','buy',{symbol:sym,side:'BUY',orderType:'LIMIT',timeInForce:'CLS',quantity:String(avgBuy),price:avg.toFixed(2)});
    } else {
      const bq=Math.max(1,Math.floor(unit/Math.max(star-.01,.01)));
-     html+=orderRow('LOC 매수','별지점 전액 매수','후반전 1회 매수금 전액',money(Math.max(star-.01,.01)),bq+'주','buy');
+     const backLoc=Math.max(star-.01,.01);
+     html+=orderRow('LOC 매수','별지점 전액 매수','후반전 1회 매수금 전액',money(backLoc),bq+'주','buy',{symbol:sym,side:'BUY',orderType:'LIMIT',timeInForce:'CLS',quantity:String(bq),price:backLoc.toFixed(2)});
    }
    if(qty>0){
      const qsell=Math.floor(qty/4), rest=qty-qsell, tgt=avg*(1+targetPct(sym));
-     if(qsell>0) html+=orderRow('LOC 매도','쿼터 매도','보유수량 1/4',money(star),qsell+'주','sell');
-     if(rest>0) html+=orderRow('지정가 매도',`${sym==='TQQQ'?'+15%':'+20%'} 목표 매도`,'나머지 보유수량',money(tgt),rest+'주','sell');
+     if(qsell>0) html+=orderRow('LOC 매도','쿼터 매도','보유수량 1/4',money(star),qsell+'주','sell',{symbol:sym,side:'SELL',orderType:'LIMIT',timeInForce:'CLS',quantity:String(qsell),price:star.toFixed(2)});
+     if(rest>0) html+=orderRow('지정가 매도',`${sym==='TQQQ'?'+15%':'+20%'} 목표 매도`,'나머지 보유수량',money(tgt),rest+'주','sell',{symbol:sym,side:'SELL',orderType:'LIMIT',timeInForce:'DAY',quantity:String(rest),price:tgt.toFixed(2)});
    }
    document.getElementById('formulaText').textContent=`NORMAL · 별지점 = 평단 × (1 + 별%); 1회매수금 = 잔금 ÷ (${N} − T)`;
  }else{
@@ -169,9 +206,9 @@ function recalc(){
    if(reverseDay===0){
      if(sellQty>0) html+=orderRow('MOC 매도','리버스 첫날 강제 매도',`보유수량 ÷ ${divisor}`, '종가',sellQty+'주','sell');
    }else{
-     if(sellQty>0) html+=orderRow('LOC 매도','리버스 무한매도','5일 종가평균 이상',money(sma5),sellQty+'주','sell');
+     if(sellQty>0) html+=orderRow('LOC 매도','리버스 무한매도','5일 종가평균 이상',money(sma5),sellQty+'주','sell',{symbol:sym,side:'SELL',orderType:'LIMIT',timeInForce:'CLS',quantity:String(sellQty),price:sma5.toFixed(2)});
      const qcash=cash/4, buyQty=Math.floor(qcash/Math.max(sma5-.01,.01));
-     if(buyQty>0) html+=orderRow('LOC 매수','리버스 쿼터매수','잔금의 1/4',money(Math.max(sma5-.01,.01)),buyQty+'주','buy');
+     if(buyQty>0) {const reverseLoc=Math.max(sma5-.01,.01);html+=orderRow('LOC 매수','리버스 쿼터매수','잔금의 1/4',money(reverseLoc),buyQty+'주','buy',{symbol:sym,side:'BUY',orderType:'LIMIT',timeInForce:'CLS',quantity:String(buyQty),price:reverseLoc.toFixed(2)});}
    }
    html+=orderRow('복귀 조건','NORMAL 복귀선',`종가가 이 가격 초과 시 복귀`,money(recovery),'체결 주문 아님','');
    document.getElementById('formulaText').textContent=`REVERSE · 별지점은 실제 연결 시 직전 5거래일 종가 평균 사용 · 회복선 ${money(recovery)}`;
@@ -193,6 +230,7 @@ function simulateClose(){
  recalc();
 }
 recalc();
-log('대시보드 시작 · MOCK MODE');
+loadSettings();
+log('대시보드 시작 · 로컬 API 서버 연결 대기');
 </script>
 </body></html>

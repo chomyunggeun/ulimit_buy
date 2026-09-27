@@ -1,0 +1,6 @@
+# Credentials are stored outside this repository (%LOCALAPPDATA%\TossV4Trader\settings.json).
+.env
+.env.*
+*.local
+settings.json
+__pycache__/
