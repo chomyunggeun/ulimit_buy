@@ -29,7 +29,9 @@ function json(response, status, payload) {
 }
 
 function safeMessage(error) {
-  return error instanceof Error ? error.message.replace(/[\r\n]+/g, " ").slice(0, 300) : "요청 처리에 실패했습니다.";
+  const codes = [error?.code, ...(error?.errors || []).map(item => item.code)];
+  if (codes.some(code => ["EACCES", "EPERM"].includes(code))) return "서버 실행 환경의 권한 제한으로 요청이 차단되었습니다. 일반 Windows 사용자 권한으로 서버를 다시 실행하세요.";
+  return error instanceof Error && error.message ? error.message.replace(/[\r\n]+/g, " ").slice(0, 300) : "서버 통신에 실패했습니다. 네트워크 연결과 서버 실행 권한을 확인하세요.";
 }
 
 function dpapi(mode, text) {
@@ -90,7 +92,7 @@ function publicConfig(config) {
   };
 }
 
-function request(method, pathname, { headers = {}, body } = {}) {
+function remoteRequest(method, pathname, { headers = {}, body } = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? Buffer.from(body) : null;
     const req = https.request(`${API_BASE}${pathname}`, { method, headers: { ...headers, ...(data ? { "Content-Length": data.length } : {}) }, timeout: 15000 }, res => {
@@ -116,7 +118,7 @@ async function accessToken(config) {
   if (!config.clientId || !config.clientSecretProtected) throw new Error("클라이언트 ID와 시크릿을 먼저 저장하세요.");
   const secret = await decrypt(config.clientSecretProtected);
   const form = new URLSearchParams({ grant_type: "client_credentials", client_id: config.clientId, client_secret: secret }).toString();
-  const result = await request("POST", "/oauth2/token", { headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form });
+  const result = await remoteRequest("POST", "/oauth2/token", { headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form });
   if (!result.data.access_token) throw new Error("액세스 토큰을 받지 못했습니다.");
   tokenCache = { value: result.data.access_token, expiresAt: Date.now() + Number(result.data.expires_in || 3600) * 1000 };
   return tokenCache.value;
@@ -130,7 +132,7 @@ async function tossApi(config, method, pathname, { account = false, body } = {})
     headers["X-Tossinvest-Account"] = String(config.accountSeq);
   }
   if (body) headers["Content-Type"] = "application/json";
-  return request(method, pathname, { headers, body: body ? JSON.stringify(body) : undefined });
+  return remoteRequest(method, pathname, { headers, body: body ? JSON.stringify(body) : undefined });
 }
 
 function positiveDecimal(value) { return typeof value === "string" && /^\d+(\.\d+)?$/.test(value) && Number(value) > 0 && value.length <= 30; }
@@ -183,8 +185,8 @@ async function api(request, response, pathname) {
   if (request.method === "POST" && pathname === "/api/test-connection") {
     const config = await readConfig();
     const token = await accessToken(config);
-    const accounts = await request("GET", "/api/v1/accounts", { headers: { Authorization: `Bearer ${token}` } });
-    const prices = await request("GET", "/api/v1/prices?symbols=TQQQ", { headers: { Authorization: `Bearer ${token}` } });
+    const accounts = await remoteRequest("GET", "/api/v1/accounts", { headers: { Authorization: `Bearer ${token}` } });
+    const prices = await remoteRequest("GET", "/api/v1/prices?symbols=TQQQ", { headers: { Authorization: `Bearer ${token}` } });
     const list = accounts.data?.result || [];
     return json(response, 200, { ok: true, accounts: list.map(account => ({ accountSeq: account.accountSeq, accountNoMasked: String(account.accountNo || "").replace(/.(?=.{4})/g, "•"), accountType: account.accountType })), price: prices.data?.result?.[0] || null });
   }
@@ -203,6 +205,7 @@ http.createServer(async (request, response) => {
     const pathname = new URL(request.url, `http://${HOST}`).pathname;
     if (pathname.startsWith("/api/")) return await api(request, response, pathname);
     if (request.method !== "GET" && request.method !== "HEAD") return json(response, 405, { error: "허용되지 않은 요청입니다." });
+    if (!["/", "/index.html", "/strategy-v4.json"].includes(pathname)) return json(response, 404, { error: "파일을 찾을 수 없습니다." });
     const relative = pathname === "/" ? "index.html" : `.${pathname}`;
     const filePath = path.resolve(ROOT, relative);
     if (!filePath.startsWith(`${ROOT}${path.sep}`)) return json(response, 403, { error: "접근이 거부되었습니다." });
